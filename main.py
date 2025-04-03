@@ -5,9 +5,9 @@ from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message
 from buttons import check
 
-BOT_TOKEN = "7850200513:AAG44pECfxXY7rudinAEsChQLo9HhiE38wc"
-CHAT_ID = '@nur02_17'
-CHANNEL_2_ID = -1002057944992
+BOT_TOKEN = ""
+CHAT_ID = ''
+CHANNEL_2_ID = 
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
