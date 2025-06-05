@@ -5,60 +5,77 @@ from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message
 from buttons import check
 
-BOT_TOKEN = ""
-CHAT_ID = ''
-CHANNEL_2_ID = 
+BOT_TOKEN = "7850200513:AAF_YoUPuobCljzaq0BNJBcjCh5pdWBsBaw"
+CHANNELS = ['@nur02_17']  # Kanal nomlari
+CHAT_ID = -1002424369794
+
+logging.basicConfig(level=logging.INFO)
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
 
+# /start komandasi
 @dp.message(Command("start"))
-async def cmd_start(message: Message): 
-    user_full_name = message.from_user.full_name
-    user_id = message.from_user.id
-    print(f"Bot user: {user_full_name} (ID: {user_id})")
+async def cmd_start(message: Message):
     await message.answer(
         "Botdan foydalanish uchun quyidagi kanallarga obuna bo'ling! 👇",
         reply_markup=check
     )
 
 
+# Obuna tekshirish funksiyasi
+async def is_user_subscribed(user_id: int, bot: Bot) -> bool:
+    for channel in CHANNELS:
+        try:
+            member = await bot.get_chat_member(chat_id=channel, user_id=user_id)
+            if member.status not in ["member", "administrator", "creator"]:
+                return False
+        except Exception as e:
+            logging.error(f"Xatolik: {e}")
+            return False
+
+        except Exception as e:
+            logging.error(f"Error checking subscription: {e}")
+            return False
+    return True
+
+
+# 🔄 Tekshirish tugmasi
+from aiogram.exceptions import TelegramBadRequest
+
+from aiogram.exceptions import TelegramBadRequest
+
 @dp.callback_query(F.data == "Tekshirish")
-async def callback_submit(call: CallbackQuery):
-    user_id = call.from_user.id
+async def check_subscription(callback: CallbackQuery):
+    user_id = callback.from_user.id
 
-    try:
-        user_status_1 = await bot.get_chat_member(chat_id=CHAT_ID, user_id=user_id)
-        user_status_2 = await bot.get_chat_member(chat_id=CHANNEL_2_ID, user_id=user_id)
-
-        if user_status_1.status not in ["left", "kicked"] and user_status_2.status not in ["left", "kicked"]:
-            await call.message.answer(
-                "✅ Botga muvaffaqiyatli kirildi!"
-            )
-            await call.message.answer(
-                f"👋 Assalomu alaykum, {call.from_user.full_name}! Botimizga xush kelibsiz.\n\n✍🏻 Kino kodini yuboring."
-            )
-        else:
-            await call.message.answer(
-                "⚠️ Siz ikkala kanalga obuna bo‘lishingiz shart!",
-                reply_markup=check
-            )
-            await call.answer("Iltimos, kanalga obuna bo'ling va qayta tekshiring!", show_alert=True)
-    except Exception as e:
-        logging.error(f"Error in checking subscription: {e}")
-        await call.message.answer("❌ Xatolik yuz berdi. Iltimos, keyinroq urinib ko‘ring.")
+    if await is_user_subscribed(user_id, bot):
+        # Obuna bo‘lgan bo‘lsa — yangi xabar bilan bildirish
+        await callback.message.delete()
+        await callback.message.answer("✅ Siz kanalga obuna bo‘lgansiz! Endi botdan foydalanishingiz mumkin.\nkino kodini yozing.")
+    else:
+        # Obuna bo‘lmagan bo‘lsa — alert ko‘rsatish
+        await callback.answer("❌ Siz hali kanalga obuna bo‘lmagansiz!", show_alert=True)
+        # Tugmalarni yangilashga harakat qilamiz
+        try:
+            await callback.message.edit_reply_markup(reply_markup=check)
+        except TelegramBadRequest as e:
+            if "message is not modified" not in str(e):
+                raise e
 
 
+
+# Video qabul qilish
 @dp.message(F.video)
 async def receive_video(message: Message):
     file_id = message.video.file_id
-    await message.answer(f"Video file_id ->: {file_id}")
+    await message.answer(f"Video file_id -> {file_id}")
 
 
+# "252" deb yozganda kino yuborish
 @dp.message(F.text == "252")
 async def send_video(message: Message):
-    print(f"Foydalanuvchi: Venom 3")
     try:
         user_status = await bot.get_chat_member(chat_id=CHAT_ID, user_id=message.from_user.id)
         if user_status.status in ["member", "administrator", "creator"]:
@@ -66,26 +83,26 @@ async def send_video(message: Message):
             await message.answer_video(
                 video=file_id,
                 caption="""
-                #🍿| Kino Nomi: Venom 3
-                ➖➖➖➖➖➖➖➖➖➖➖➖
-                🇺🇿| Tili: O'zbek tilida
-                💾| Sifati: Ts format 
-                🎞️| Janri: Jangari
-                ⛔️| Ko'rish Kategoriyasi: 18+
-                
-                🔰| Kanal: @nur02_16
-                🗂 Yuklash: 5903
-                
-                🤖 Bizning bot: @news4sd_bot
+#🍿| Kino Nomi: Venom 3
+➖➖➖➖➖➖➖➖➖➖➖➖
+🇺🇿| Tili: O'zbek tilida
+💾| Sifati: Ts format 
+🎞️| Janri: Jangari
+⛔️| Ko'rish Kategoriyasi: 18+
+
+🔰| Kanal: @nur02_16
+🗂 Yuklash: 5903
+
+🤖 Bizning bot: @news4sd_bot
                 """
             )
         else:
             await message.answer(
-                "⚠️ Siz kanalga obuna bo'lmagansiz! Kanalga obuna bo'ling va qayta urinib ko'ring.",
+                "⚠️ Siz kanalga obuna bo'lmagansiz! Obuna bo‘lib, qayta urinib ko‘ring.",
                 reply_markup=check
             )
     except Exception as e:
-        await message.answer("❌ Xatolik yuz berdi. Iltimos, qayta urinib ko‘ring.")
+        await message.answer("❌ Xatolik yuz berdi. Keyinroq urinib ko‘ring.")
         logging.error(f"Error in video sending: {e}")
 
 # ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
@@ -1405,7 +1422,7 @@ async def send_video(message: Message):
         await message.answer("❌ Xatolik yuz berdi. Iltimos, qayta urinib ko'ring.")
         logging.error(f"Error in video sending: {e}")
 
-
+        
 # |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
 @dp.message(F.text == "57")
 async def send_video(message: Message):
@@ -1951,7 +1968,7 @@ async def send_video(message: Message):
             file_id = "BAACAgIAAxkBAAILFmdaa0Q-vaVf6injlAABDPbAkp9FsAACWl0AAk310UrAb_tbRsLP1zYE"
             await message.answer_video(
                 video=file_id,
-                caption="#🍿| Kino Nomi:World Disaster 2024\n➖➖➖➖➖➖➖➖➖➖➖➖\n🇺🇿| Tili: English language \n💾| Sifati: Ts format \n🎞️| Janri: Jangari\n⛔️| Ko'rish Kategoriyasi: 18+\n\n🔰| Kanal: @nur02_16\n🗂 Yuklash: 5903\n\n🤖 Bizning bot: @news4sd_bot"
+                caption="#🍿| Kino Nomi:World Disaster 2024\n➖➖➖➖➖➖➖➖➖➖➖➖\n🇺🇿| Tili:  O'zbek tilida \n💾| Sifati: Ts format \n🎞️| Janri: Jangari\n⛔️| Ko'rish Kategoriyasi: 18+\n\n🔰| Kanal: @nur02_16\n🗂 Yuklash: 5903\n\n🤖 Bizning bot: @news4sd_bot"
             )
 
         else:
@@ -1974,7 +1991,7 @@ async def send_video(message: Message):
             file_id = "BAACAgIAAxkBAAIMFWdbAAH1YJsDct4lyKiypEhUymLrzAAC2k8AAt_miEt5xpsa0qAoOjYE"
             await message.answer_video(
                 video=file_id,
-                caption="#🍿| Kino Nomi:parijdagi sarguzashtlar \n➖➖➖➖➖➖➖➖➖➖➖➖\n🇺🇿| Tili: English language \n💾| Sifati: Ts format \n🎞️| Janri: Jangari\n⛔️| Ko'rish Kategoriyasi: 18+\n\n🔰| Kanal: @nur02_16\n🗂 Yuklash: 5903\n\n🤖 Bizning bot: @news4sd_bot"
+                caption="#🍿| Kino Nomi:parijdagi sarguzashtlar \n➖➖➖➖➖➖➖➖➖➖➖➖\n🇺🇿| Tili: O'zbek tilida \n💾| Sifati: Ts format \n🎞️| Janri: Jangari\n⛔️| Ko'rish Kategoriyasi: 18+\n\n🔰| Kanal: @nur02_16\n🗂 Yuklash: 5903\n\n🤖 Bizning bot: @news4sd_bot"
             )
 
         else:
@@ -1997,7 +2014,7 @@ async def send_video(message: Message):
             file_id = "BAACAgIAAxkBAAIYeWfoKR82vmTG1KT4zEmbqsA_es-fAAKKCAAClmj5SxdS9GjRJ7zlNgQ"
             await message.answer_video(
                 video=file_id,
-                caption="#🍿| Kino Nomi:12 yil qullik\n➖➖➖➖➖➖➖➖➖➖➖➖\n🇺🇿| Tili: English language \n💾| Sifati: Ts format \n🎞️| Janri: Jangari\n⛔️| Ko'rish Kategoriyasi: 18+\n\n🔰| Kanal: @nur02_16\n🗂 Yuklash: 5903\n\n🤖 Bizning bot: @news4sd_bot"
+                caption="#🍿| Kino Nomi:12 yil qullik\n➖➖➖➖➖➖➖➖➖➖➖➖\n🇺🇿| Tili:  O'zbek tilida \n💾| Sifati: Ts format \n🎞️| Janri: Jangari\n⛔️| Ko'rish Kategoriyasi: 18+\n\n🔰| Kanal: @nur02_16\n🗂 Yuklash: 5903\n\n🤖 Bizning bot: @news4sd_bot"
             )
 
         else:
@@ -2008,8 +2025,10 @@ async def send_video(message: Message):
     except Exception as e:
         await message.answer("❌ Xatolik yuz berdi. Iltimos, qayta urinib ko'ring.")
         logging.error(f"Error in video sending: {e}")
+
+
 #||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
-@dp.message(F.text == "97")
+@dp.message(F.text == "98")
 async def send_video(message: Message):
     print(f"Foydalanuvchi: sonic 3")
     try:
@@ -2018,7 +2037,7 @@ async def send_video(message: Message):
             file_id = "BAACAgEAAxkBAAIYe2foKnbzlCcL91O6XFKhmFX2ro0LAAKsAwACMsqgRXvorEE4kgymNgQ"
             await message.answer_video(
                 video=file_id,
-                caption="#🍿| Kino Nomi:sonic 3\n➖➖➖➖➖➖➖➖➖➖➖➖\n🇺🇿| Tili: English language \n💾| Sifati: Ts format \n🎞️| Janri: Jangari\n⛔️| Ko'rish Kategoriyasi: 18+\n\n🔰| Kanal: @nur02_16\n🗂 Yuklash: 5903\n\n🤖 Bizning bot: @news4sd_bot"
+                caption="#🍿| Kino Nomi:sonic 3\n➖➖➖➖➖➖➖➖➖➖➖➖\n🇺🇿| Tili:  O'zbek tilida\n💾| Sifati: Ts format \n🎞️| Janri: Jangari\n⛔️| Ko'rish Kategoriyasi: 18+\n\n🔰| Kanal: @nur02_16\n🗂 Yuklash: 5903\n\n🤖 Bizning bot: @news4sd_bot"
             )
 
         else:
@@ -2029,6 +2048,8 @@ async def send_video(message: Message):
     except Exception as e:
         await message.answer("❌ Xatolik yuz berdi. Iltimos, qayta urinib ko'ring.")
         logging.error(f"Error in video sending: {e}")
+
+
 #|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
 @dp.message(F.text == "100")
 async def send_video(message: Message):
@@ -2039,7 +2060,7 @@ async def send_video(message: Message):
             file_id = "BAACAgIAAxkBAAIYfWfoLAOQ-mGvRWkWcycRogvTw_zDAALMZwACgE-4SCrfPJ-z6DW0NgQ"
             await message.answer_video(
                 video=file_id,
-                caption="#🍿| Kino Nomi: sening aybing\n➖➖➖➖➖➖➖➖➖➖➖➖\n🇺🇿| Tili: English language \n💾| Sifati: Ts format \n🎞️| Janri: Jangari\n⛔️| Ko'rish Kategoriyasi: 18+\n\n🔰| Kanal: @nur02_16\n🗂 Yuklash: 5903\n\n🤖 Bizning bot: @news4sd_bot"
+                caption="#🍿| Kino Nomi: sening aybing\n➖➖➖➖➖➖➖➖➖➖➖➖\n🇺🇿| Tili:  O'zbek tilida \n💾| Sifati: Ts format \n🎞️| Janri: Jangari\n⛔️| Ko'rish Kategoriyasi: 18+\n\n🔰| Kanal: @nur02_16\n🗂 Yuklash: 5903\n\n🤖 Bizning bot: @news4sd_bot"
             )
 
         else:
@@ -2050,6 +2071,8 @@ async def send_video(message: Message):
     except Exception as e:
         await message.answer("❌ Xatolik yuz berdi. Iltimos, qayta urinib ko'ring.")
         logging.error(f"Error in video sending: {e}")
+
+
 # ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
 @dp.message(F.text == "101")
 async def send_video(message: Message):
@@ -2060,7 +2083,7 @@ async def send_video(message: Message):
             file_id = "BAACAgQAAxkBAAIYf2foLSbLCaeGms9xpPI4IRdAkRWAAAIxFQACotoQUtCmeqGLUwgINgQ"
             await message.answer_video(
                 video=file_id,
-                caption="#🍿| Kino Nomi:Jarlik (ha osha kino mergan bola)\n➖➖➖➖➖➖➖➖➖➖➖➖\n🇺🇿| Tili: English language \n💾| Sifati: Ts format \n🎞️| Janri: Jangari\n⛔️| Ko'rish Kategoriyasi: 18+\n\n🔰| Kanal: @nur02_16\n🗂 Yuklash: 5903\n\n🤖 Bizning bot: @news4sd_bot"
+                caption="#🍿| Kino Nomi:Jarlik (ha osha kino mergan bola)\n➖➖➖➖➖➖➖➖➖➖➖➖\n🇺🇿| Tili:  O'zbek tilida \n💾| Sifati: Ts format \n🎞️| Janri: Jangari\n⛔️| Ko'rish Kategoriyasi: 18+\n\n🔰| Kanal: @nur02_16\n🗂 Yuklash: 5903\n\n🤖 Bizning bot: @news4sd_bot"
             )
 
         else:
@@ -2071,6 +2094,8 @@ async def send_video(message: Message):
     except Exception as e:
         await message.answer("❌ Xatolik yuz berdi. Iltimos, qayta urinib ko'ring.")
         logging.error(f"Error in video sending: {e}")
+
+
 # |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
 @dp.message(F.text == "102")
 async def send_video(message: Message):
@@ -2081,7 +2106,7 @@ async def send_video(message: Message):
             file_id = "BAACAgQAAxkBAAIYgWfoLXbv8JKFE2-dSV1IM_-p4shnAALrFgACB_gRUDbZOmFi3FIYNgQ"
             await message.answer_video(
                 video=file_id,
-                caption="#🍿| Kino Nomi:Ovchi Kreyven (2024)\n➖➖➖➖➖➖➖➖➖➖➖➖\n🇺🇿| Tili: English language \n💾| Sifati: Ts format \n🎞️| Janri: Jangari\n⛔️| Ko'rish Kategoriyasi: 18+\n\n🔰| Kanal: @nur02_16\n🗂 Yuklash: 5903\n\n🤖 Bizning bot: @news4sd_bot"
+                caption="#🍿| Kino Nomi:Ovchi Kreyven (2024)\n➖➖➖➖➖➖➖➖➖➖➖➖\n🇺🇿| Tili:  O'zbek tilida \n💾| Sifati: Ts format \n🎞️| Janri: Jangari\n⛔️| Ko'rish Kategoriyasi: 18+\n\n🔰| Kanal: @nur02_16\n🗂 Yuklash: 5903\n\n🤖 Bizning bot: @news4sd_bot"
             )
 
         else:
@@ -2092,6 +2117,8 @@ async def send_video(message: Message):
     except Exception as e:
         await message.answer("❌ Xatolik yuz berdi. Iltimos, qayta urinib ko'ring.")
         logging.error(f"Error in video sending: {e}")
+
+
 # |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
 @dp.message(F.text == "103")
 async def send_video(message: Message):
@@ -2102,7 +2129,7 @@ async def send_video(message: Message):
             file_id = "BAACAgIAAxkBAAIaP2frjg3Vw1H2bna4Bx0ntnVQ-ClVAALLYAACPbmAS2gHdpKJdBaoNgQ"
             await message.answer_video(
                 video=file_id,
-                caption="#🍿| Kino Nomi: ARISTOKRATLAR JAMOASI SHOU KONSERT DASTURI 2024\n➖➖➖➖➖➖➖➖➖➖➖➖\n🇺🇿| Tili: English language \n💾| Sifati: Ts format \n🎞️| Janri: Jangari\n⛔️| Ko'rish Kategoriyasi: 18+\n\n🔰| Kanal: @nur02_16\n🗂 Yuklash: 5903\n\n🤖 Bizning bot: @nur02_17"
+                caption="#🍿| Kino Nomi: ARISTOKRATLAR JAMOASI SHOU KONSERT DASTURI 2024\n➖➖➖➖➖➖➖➖➖➖➖➖\n🇺🇿| Tili:  O'zbek tilida \n💾| Sifati: Ts format \n🎞️| Janri: Jangari\n⛔️| Ko'rish Kategoriyasi: 18+\n\n🔰| Kanal: @nur02_16\n🗂 Yuklash: 5903\n\n🤖 Bizning bot: @nur02_17"
             )
 
         else:
@@ -2113,6 +2140,8 @@ async def send_video(message: Message):
     except Exception as e:
         await message.answer("❌ Xatolik yuz berdi. Iltimos, qayta urinib ko'ring.")
         logging.error(f"Error in video sending: {e}")
+
+
 # ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
 @dp.message(F.text == "96")
 async def send_video(message: Message):
@@ -2123,7 +2152,95 @@ async def send_video(message: Message):
             file_id = "BAACAgQAAxkBAAIaS2frzRGh9z45UZIUakCtxrl2DCbHAAJpHgACu2iJUczkMPrMbiocNgQ"
             await message.answer_video(
                 video=file_id,
-                caption="#🍿| Kino Nomi::Qabr la’nati\n➖➖➖➖➖➖➖➖➖➖➖➖\n🇺🇿| Tili: English language \n💾| Sifati: Ts format \n🎞️| Janri: Jangari\n⛔️| Ko'rish Kategoriyasi: 18+\n\n🔰| Kanal: @nur02_16\n🗂 Yuklash: 5903\n\n🤖 Bizning bot: @nur02_17"
+                caption="#🍿| Kino Nomi: Qabr la’nati\n➖➖➖➖➖➖➖➖➖➖➖➖\n🇺🇿| Tili:  O'zbek tilida \n💾| Sifati: Ts format \n🎞️| Janri: Jangari\n⛔️| Ko'rish Kategoriyasi: 18+\n\n🔰| Kanal: @nur02_16\n🗂 Yuklash: 5903\n\n🤖 Bizning bot: @nur02_17"
+            )
+
+        else:
+            await message.answer(
+                "⚠️ Siz kanalga obuna bo'lmagansiz! Kanalga obuna bo'ling va qayta urinib ko'ring.",
+                reply_markup=check
+            )
+    except Exception as e:
+        await message.answer("❌ Xatolik yuz berdi. Iltimos, qayta urinib ko'ring.")
+        logging.error(f"Error in video sending: {e}")
+
+
+# ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+@dp.message(F.text == "87")
+async def send_video(message: Message):
+    print(f"Foydalanuvchi: O’LMAS")
+    try:
+        user_status = await bot.get_chat_member(chat_id=CHAT_ID, user_id=message.from_user.id)
+        if user_status.status in ["member", "administrator", "creator"]:
+            file_id = "BAACAgIAAxkBAAIaamfutE5eTLOkSb2ca04XNPOMhsDfAAK9ZwACQF14SybbmfQ4WIb7NgQ"
+            await message.answer_video(
+                video=file_id,
+                caption="#🍿| Kino Nomi:  O’LMAS\n➖➖➖➖➖➖➖➖➖➖➖➖\n🇺🇿| Tili:  O'zbek tilida \n💾| Sifati: Ts format \n🎞️| Janri: Jangari\n⛔️| Ko'rish Kategoriyasi: 18+\n\n🔰| Kanal: @nur02_16\n🗂 Yuklash: 5903\n\n🤖 Bizning bot: @nur02_17"
+            )
+
+        else:
+            await message.answer(
+                "⚠️ Siz kanalga obuna bo'lmagansiz! Kanalga obuna bo'ling va qayta urinib ko'ring.",
+                reply_markup=check
+            )
+    except Exception as e:
+        await message.answer("❌ Xatolik yuz berdi. Iltimos, qayta urinib ko'ring.")
+        logging.error(f"Error in video sending: {e}")
+
+
+# ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+@dp.message(F.text == "88")
+async def send_video(message: Message):
+    print(f"Foydalanuvchi:Interstellar")
+    try:
+        user_status = await bot.get_chat_member(chat_id=CHAT_ID, user_id=message.from_user.id)
+        if user_status.status in ["member", "administrator", "creator"]:
+            file_id = "BAACAgEAAxkBAAIaimfwEeXxsUejYRsiLl8v96VeoBhLAAKgAAMlgfBHd6vMifnVm6s2BA"
+            await message.answer_video(
+                video=file_id,
+                    caption="#🍿| Kino Nomi:Interstellar\n➖➖➖➖➖➖➖➖➖➖➖➖\n🇺🇿| Tili: O'zbek tilida\n💾| Sifati: Ts format \n🎞️| Janri: Jangari\n⛔️| Ko'rish Kategoriyasi: 18+\n\n🔰| Kanal: @nur02_16\n🗂 Yuklash: 5903\n\n🤖 Bizning bot: @news4sd_bot"
+            )
+
+        else:
+            await message.answer(
+                "⚠️ Siz kanalga obuna bo'lmagansiz! Kanalga obuna bo'ling va qayta urinib ko'ring.",
+                reply_markup=check
+            )
+    except Exception as e:
+        await message.answer("❌ Xatolik yuz berdi. Iltimos, qayta urinib ko'ring.")
+        logging.error(f"Error in video sending: {e}")
+# ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+@dp.message(F.text == "104")
+async def send_video(message: Message):
+    print(f"Foydalanuvchi:Sahro ovchilari")
+    try:
+        user_status = await bot.get_chat_member(chat_id=CHAT_ID, user_id=message.from_user.id)
+        if user_status.status in ["member", "administrator", "creator"]:
+            file_id = "BAACAgQAAxkBAAIbZ2gYwxdOTAxySQzBnwOKi_d60OE6AALmGwACj33IUNVpb9I2mwnSNgQ"
+            await message.answer_video(
+                video=file_id,
+                    caption="#🍿| Kino Nomi:Sahro ovchilari\n➖➖➖➖➖➖➖➖➖➖➖➖\n🇺🇿| Tili: O'zbek tilida\n💾| Sifati: Ts format \n🎞️| Janri: Jangari\n⛔️| Ko'rish Kategoriyasi: 18+\n\n🔰| Kanal: @nur02_16\n🗂 Yuklash: 5903\n\n🤖 Bizning bot: @news4sd_bot"
+            )
+
+        else:
+            await message.answer(
+                "⚠️ Siz kanalga obuna bo'lmagansiz! Kanalga obuna bo'ling va qayta urinib ko'ring.",
+                reply_markup=check
+            )
+    except Exception as e:
+        await message.answer("❌ Xatolik yuz berdi. Iltimos, qayta urinib ko'ring.")
+        logging.error(f"Error in video sending: {e}")
+# ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+@dp.message(F.text == "105")
+async def send_video(message: Message):
+    print(f"Foydalanuvchi:Jinoyat shahri 3")
+    try:
+        user_status = await bot.get_chat_member(chat_id=CHAT_ID, user_id=message.from_user.id)
+        if user_status.status in ["member", "administrator", "creator"]:
+            file_id = "BAACAgEAAxkBAAIbbGgY8aMHd0VGRdlsxVEuvFn3r1eFAAJGBAACbkm5RRNWRzJvFsVgNgQ"
+            await message.answer_video(
+                video=file_id,
+                    caption="#🍿| Kino Nomi:Jinoyat shahri 3\n➖➖➖➖➖➖➖➖➖➖➖➖\n🇺🇿| Tili: O'zbek tilida\n💾| Sifati: Ts format \n🎞️| Janri: Jangari\n⛔️| Ko'rish Kategoriyasi: 18+\n\n🔰| Kanal: @nur02_16\n🗂 Yuklash: 5903\n\n🤖 Bizning bot: @news4sd_bot"
             )
 
         else:
@@ -2138,6 +2255,60 @@ async def main() -> None:
 
     bot = Bot(token=BOT_TOKEN)
     await dp.start_polling(bot)
+
+
+
+# ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+@dp.message(F.text == "106")
+async def send_video(message: Message):
+    print(f"Foydalanuvchi:Bezori yigitlar / Bezorilar Koreya seriali")
+    try:
+        user_status = await bot.get_chat_member(chat_id=CHAT_ID, user_id=message.from_user.id)
+        if user_status.status in ["member", "administrator", "creator"]:
+            file_id = "BAACAgIAAxkBAAIbfmgcLEsfNKeOAWBTHh9XOg9jLWOoAAITaAACzzPQS1HhZgeslOTlNgQ"
+            await message.answer_video(
+                video=file_id,
+                caption="#🍿| Kino Nomi:Bezori yigitlar / Bezorilar Koreya seriali\n1 chi qism\n➖➖➖➖➖➖➖➖➖➖➖➖\n🇺🇿| Tili: O'zbek tilida\n💾| Sifati: Ts format \n🎞️| Janri: Jangari\n⛔️| Ko'rish Kategoriyasi: 6+\n\n🔰| Kanal: @nur02_16\n🗂 Yuklash: 5903\n\n🤖 Bizning bot: @news4sd_bot"
+            )
+        if user_status.status in ["member", "administrator", "creator"]:
+            file_id = "BAACAgIAAxkBAAIbgGgcLIMJ6F_3yM1NBmK2xe8Jk1pKAAIUaAACzzPQS2hH6gS9WvF2NgQ"
+            await message.answer_video(
+                video=file_id,
+                caption="#🍿| Kino Nomi:Bezori yigitlar / Bezorilar Koreya seriali\n2 chi qism\n➖➖➖➖➖➖➖➖➖➖➖➖\n🇺🇿| Tili: O'zbek tilida\n💾| Sifati: Ts format \n🎞️| Janri: Jangari\n⛔️| Ko'rish Kategoriyasi: 6+\n\n🔰| Kanal: @nur02_16\n🗂 Yuklash: 5903\n\n🤖 Bizning bot: @news4sd_bot"
+            )
+        if user_status.status in ["member", "administrator", "creator"]:
+            file_id = "BAACAgIAAxkBAAIbhGgcLINIUxUssVezvkQG-P9ORFDSAAJpdgACzzPYS2P3eUcvMA3iNgQ"
+            await message.answer_video(
+                video=file_id,
+                caption="#🍿| Kino Nomi:Bezori yigitlar / Bezorilar Koreya seriali\n3 chi qism\n➖➖➖➖➖➖➖➖➖➖➖➖\n🇺🇿| Tili: O'zbek tilida\n💾| Sifati: Ts format \n🎞️| Janri: Jangari\n⛔️| Ko'rish Kategoriyasi: 6+\n\n🔰| Kanal: @nur02_16\n🗂 Yuklash: 5903\n\n🤖 Bizning bot: @news4sd_bot"
+            )
+        if user_status.status in ["member", "administrator", "creator"]:
+            file_id = "BAACAgIAAxkBAAIbgWgcLIPm-1On_JOUq1hpLtzTBU9kAAL5bgACzzPYSw05uctJlf7GNgQ"
+            await message.answer_video(
+                video=file_id,
+                caption="#🍿| Kino Nomi:Bezori yigitlar / Bezorilar Koreya seriali\n4 chi qism\n➖➖➖➖➖➖➖➖➖➖➖➖\n🇺🇿| Tili: O'zbek tilida\n💾| Sifati: Ts format \n🎞️| Janri: Jangari\n⛔️| Ko'rish Kategoriyasi: 6+\n\n🔰| Kanal: @nur02_16\n🗂 Yuklash: 5903\n\n🤖 Bizning bot: @news4sd_bot"
+            )
+        if user_status.status in ["member", "administrator", "creator"]:
+            file_id = "BAACAgIAAxkBAAIbg2gcLIN8IIIWEwSz8t9QW3dfnyprAAJWdQACzzPYSxcHdASt-rmWNgQ"
+            await message.answer_video(
+                video=file_id,
+                caption="#🍿| Kino Nomi:Bezori yigitlar / Bezorilar Koreya seriali\n5 chi qism\n➖➖➖➖➖➖➖➖➖➖➖➖\n🇺🇿| Tili: O'zbek tilida\n💾| Sifati: Ts format \n🎞️| Janri: Jangari\n⛔️| Ko'rish Kategoriyasi: 6+\n\n🔰| Kanal: @nur02_16\n🗂 Yuklash: 5903\n\n🤖 Bizning bot: @news4sd_bot"
+            )
+        if user_status.status in ["member", "administrator", "creator"]:
+            file_id = "BAACAgIAAxkBAAIbgmgcLIMyzXOqDbkjohvXscoDu92XAAJfbAACzzPYS1bS0tfjcv8dNgQ"
+            await message.answer_video(
+                video=file_id,
+                caption="#🍿| Kino Nomi:Bezori yigitlar / Bezorilar Koreya seriali\n6 chi qism\n➖➖➖➖➖➖➖➖➖➖➖➖\n🇺🇿| Tili: O'zbek tilida\n💾| Sifati: Ts format \n🎞️| Janri: Jangari\n⛔️| Ko'rish Kategoriyasi: 6+\n\n🔰| Kanal: @nur02_16\n🗂 Yuklash: 5903\n\n🤖 Bizning bot: @news4sd_bot"
+            )
+
+        else:
+            await message.answer(
+                "⚠️ Siz kanalga obuna bo'lmagansiz! Kanalga obuna bo'ling va qayta urinib ko'ring.",
+                reply_markup=check
+            )
+    except Exception as e:
+        await message.answer("❌ Xatolik yuz berdi. Iltimos, qayta urinib ko'ring.")
+        logging.error(f"Error in video sending: {e}")
 
 
 if __name__ == '__main__':
