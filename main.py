@@ -5,10 +5,9 @@ from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message
 from buttons import check
 
-BOT_TOKEN = "7850200513:AAF_YoUPuobCljzaq0BNJBcjCh5pdWBsBaw"
-CHANNELS = ['@nur02_17']  # Kanal nomlari
-CHAT_ID = -1002424369794
-
+BOT_TOKEN = ""
+CHANNELS = []  # Kanal nomlari
+CHAT_ID = 
 logging.basicConfig(level=logging.INFO)
 
 bot = Bot(token=BOT_TOKEN)
